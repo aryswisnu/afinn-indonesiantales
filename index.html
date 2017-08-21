@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/bootstrap-theme.min.css">
+
+  <style>
+    .theme-dropdown .dropdown-menu {
+      position: static;
+      display: block;
+      margin-bottom: 20px;
+    }
+
+    .theme-showcase > p > .btn {
+      margin: 5px 0;
+    }
+
+    .theme-showcase .navbar .container {
+      width: auto;
+    }
+
+    textarea {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100%;
+      height: 180px;
+      min-height: 180px;
+      max-height: 180px;
+      padding: 10px;
+    }
+
+    .jumbotron {
+      background-color: white;
+    }
+
+    .jumbotron h3 {
+      color: white;
+    }
+
+    #result {
+      background-color: #F5B704;
+      color: #000C28;
+    }
+
+    .jumbotron p {
+      font-size: 1.1em;
+    }
+		
+		.btn-file {
+    position: relative;
+    overflow: hidden;
+		}
+		
+		.btn-file input[type=file] {
+				position: absolute;
+				top: 0;
+				right: 0;
+				min-width: 100%;
+				min-height: 100%;
+				font-size: 100px;
+				text-align: right;
+				filter: alpha(opacity=0);
+				opacity: 0;
+				outline: none;
+				background: white;
+				cursor: inherit;
+				display: block;
+		}
+		#left a{
+			text-decoration:none;
+		}
+  </style>
+
+  <title>AFINN Sentiment Analysis</title>
+</head>
+
+<body role="document">
+  <div class="container" style="width:90%">
+    <div class="jumbotron">
+			<h2>Task Klasifikasi dengan AFINN</h2>
+			<p>Aplikasi ini mengimplementasikan task klasifikasi dengan menggunakan data corpus yang kami bangun (berdasarkan hasil translasi AFINN-111* ke dalam bahasa Indonesia) 
+			serta menggunakan dataset berupa cerita anak yang merupakan data dari hasil crawling situs <a href="http://dongengceritarakyat.com" target="_blank" style="text-decoration:none">dongengcerita.com</a>.</p>
+			<p style="font-size:12px;">*AFINN adalah daftar kata yang dinilai dengan menggunakan integer antara -5 (negatif) sampai dengan +5 (positif).</p> 
+			<div id="left" style="float:left;">
+				Source:<br/>
+				<a href="https://github.com/evanplaice/jquery-csv" target="_blank">jquery-csv project</a><br/>
+				<a href="https://github.com/darenr/afinn/" target="_blank">sentiment.js</a><br/>
+				<a href="https://github.com/mirzaasif/JS-StopWord/" target="_blank">StopWord.js</a><br/>
+				<a href="http://static.hikaruyuuki.com/wp-content/uploads/stopword_list_tala.txt" target="_blank">Stopword list Bahasa Indonesia</a><br/>
+				<a href="https://github.com/chartjs/Chart.js/" target="_blank">Chart.js</a><br/>
+			</div>
+			<br/>
+			<div id="inputs" class="clearfix" style="float:right;">
+			Pilih dataset (<font color="red">.csv</font>): <input type="file" id="files" name="files[]" accept=".csv" multiple required />
+			<br/>
+			<button type="button" class="btn btn-primary" id="nonstopword" disabled>Un-Preprocessing Classify</button>
+			<button type="button" class="btn btn-primary" id="preprocessing" disabled>Preprocessing</button>
+			<button type="button" class="btn btn-primary" id="analyze" disabled>Classify</button>
+			<!--<button type="button" class="btn btn-primary" id="calculate" >Calculate Accuration</button>-->
+			<a data-target='#myModal' href='#' data-toggle='modal' ><button type="button" class="btn btn-primary" id="visualize" disabled>Visualize</button></a>
+			</div>
+			<br/>
+			<output id="list" style="width:100%;float:left"></output>
+			<br/>
+			<table id="headertable" style="width:100%; height:50px;table-layout: fixed;text-align:center" border hidden>
+				<tr>
+					<td style="width:5%"><p>No.</p></td>
+					<td><p>Isi Cerita</p></td>
+					<td><p>URL</p></td>
+					<td><p>Judul Cerita</p></td>
+					<td><p>Klasifikasi Tanpa Stopword</p></td>
+					<td><p>Stopwords</p></td>
+					<td><p>Klasifikasi</p></td>
+				</tr>
+			</table>
+			<table id="contents" style="width:100%; height:400px;" border></table>
+    </div>
+		<div class='modal fade col-md-12' role='form' id='myModal' role='dialog'>
+			<div class='modal-dialog modal-lg'>
+				<div class='modal-content'>
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal">&times;</button>
+						<h4 class="modal-title">Polarity Graph</h4>
+					</div>
+					<div class='modal-body row'>
+						<div class="col-md-12">
+							<div class="col-md-9">
+								<canvas id="unpreprocessChart"></canvas>
+								<center><div class="col-md-12">(Tanpa Preprocessing)</div></center>
+							</div>
+							<div class="col-md-3">
+								Total Data: <p id="total_n"> </p>
+								Positive:<p id="positive_n"> </p>
+								Negative:<p id="negative_n"> </p>
+								Neutral:<p id="neutral_n"> </p>
+							</div>
+						</div>
+						<div class="col-md-12" style="border:thin solid lightgrey;margin-top:10px;margin-bottom:10px"></div>
+						<div class="col-md-12">
+							<div class="col-md-9">
+								<canvas id="preprocessChart"></canvas>
+								<center><div class="col-md-12">(Dengan Preprocessing)</div></center>
+							</div>
+							<div class="col-md-3">
+								Total Data: <p id="total"> </p>
+								Positive:<p id="positive"> </p>
+								Negative:<p id="negative"> </p>
+								Neutral:<p id="neutral"> </p>
+							</div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					</div>
+				</div>
+			</div>
+		</div>
+  </div>
+
+  <script src="js/jquery.min.js"></script>
+  <script src="js/bootstrap.min.js"></script>
+	<script src="js/jquery.csv.js"></script>
+	<script src="js/StopWord.js"></script>
+	<script src="js/Chart.min.js"></script>
+	
+  <!-- Bahasa words -->
+  <script src="js/afinn_id.js"></script>
+  <!-- Algorithm -->
+  <script src="js/sentiment.js"></script>
+
+	<script>
+		// sentiment
+    var afinn = afinn_id;
+
+		// csv
+		$(document).ready(function() {
+			if(isAPIAvailable()) {
+				$('#files').bind('change', handleFileSelect);
+			}
+		});
+		
+		function isAPIAvailable() {
+			// Check for the various File API support.
+			if (window.File && window.FileReader && window.FileList && window.Blob) {
+				// Great success! All the File APIs are supported.
+				return true;
+			} else {
+				// source: File API availability - http://caniuse.com/#feat=fileapi
+				// source: <output> availability - http://html5doctor.com/the-output-element/
+				document.writeln('The HTML5 APIs used in this form are only available in the following browsers:<br />');
+				// 6.0 File API & 13.0 <output>
+				document.writeln(' - Google Chrome: 13.0 or later<br />');
+				// 3.6 File API & 6.0 <output>
+				document.writeln(' - Mozilla Firefox: 6.0 or later<br />');
+				// 10.0 File API & 10.0 <output>
+				document.writeln(' - Internet Explorer: Not supported (partial support expected in 10.0)<br />');
+				// ? File API & 5.1 <output>
+				document.writeln(' - Safari: Not supported<br />');
+				// ? File API & 9.2 <output>
+				document.writeln(' - Opera: Not supported');
+				return false;
+			}
+		}
+
+		function handleFileSelect(evt) {
+			var files = evt.target.files; // FileList object
+			var file = files[0];
+
+			// read the file metadata
+			var output = ''
+					output += ' <hr/>';
+					output += ' <span style="font-weight:bold;">' + escape(file.name) + '</span><br />\n';
+					output += ' - File Type: ' + (file.type || 'n/a') + '<br />\n';
+					output += ' - File Size: ' + file.size + ' bytes<br />\n';
+					output += ' - Last Modified: ' + (file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() : 'n/a') + '<br />\n';
+					output += ' <hr/>';
+			// read the file contents
+			printTable(file);
+
+			// post the results
+			$('#list').append(output);
+			$("#preprocessing").removeAttr('disabled');
+			$("#nonstopword").removeAttr('disabled');
+		}
+		
+		// print table
+		function printTable(file) {
+			var reader = new FileReader();
+			reader.readAsText(file);
+			reader.onload = function(event){
+				var csv = event.target.result;
+				var data = $.csv.toArrays(csv);
+				var html = '';
+				var i = 1;
+				var count = 0;
+				var nomer = 1;
+				$("#headertable").removeAttr('hidden');
+				// print each row
+				for(var row in data) {
+					html += '<tr>\r\n';
+					html += '<td style="width:5%"><textarea readonly>'+ nomer++ +'</textarea></td>\r\n';
+					for(var item in data[row]) {
+						html += '<td><textarea readonly id="txt'+ i++ +'">' + data[row][item] + '</textarea></td>\r\n';
+						count++;
+					}
+					html += '<td><textarea readonly id="nonstopword'+ i +'"></textarea></td>\r\n';
+					html += '<td><textarea readonly id="stopword'+ i +'"></textarea></td>\r\n';
+					html += '<td><textarea readonly id="result'+ i +'"></textarea></td>\r\n';
+					html += '</tr>\r\n';
+				}
+				// print preprocessing
+				$('#preprocessing').click(function() {
+					for(i=1;i<=count;i++) {
+						testString = document.getElementById('txt'+ i +'').value;
+						testString = testString.removeStopWords();
+						$("textarea#stopword"+ (i+3) +"").val(testString);
+					}
+					$("#analyze").removeAttr('disabled');
+				});
+				
+				var neutral_n = 0;
+				var positive_n = 0;
+				var negative_n = 0;
+				// print classification
+				$('#nonstopword').click(function() {
+					var a = 1;
+					for(var b=1;b<=count;b++) {
+							a = a+3;
+							b = a-3;
+							$("#nonstopword"+a).html(JSON.stringify(sentiment($("#txt"+b).val()), null, 2));
+							var nonstopword = jQuery.parseJSON(JSON.stringify(sentiment($("#txt"+b).val())));
+							if(parseInt(nonstopword.score) > 0){
+								positive_n += 1;
+							}else if(parseInt(nonstopword.score) < 0){
+								negative_n += 1;
+							}else{
+								neutral_n += 1;
+							}
+					}
+				});
+				var neutral = 0;
+				var positive = 0;
+				var negative = 0;
+				$('#analyze').click(function() {
+					$("#visualize").removeAttr('disabled');
+					var j = '';
+					var temp = 1;
+					for(j=temp;j<=count;j++) {
+							temp = temp+3;
+							$('#result'+ temp +'').html(JSON.stringify(sentiment($('#stopword'+ temp +'').val()), null, 2));
+							var result = jQuery.parseJSON(JSON.stringify(sentiment($('#stopword'+ temp +'').val())));
+							if(parseInt(result.score) > 0){
+								positive += 1;
+							}else if(parseInt(result.score) < 0){
+								negative += 1;
+							}else{
+								neutral += 1;
+							}
+					}
+				});
+				
+				// print classification
+				$('#visualize').click(function() {
+						var ctxp = document.getElementById("preprocessChart").getContext('2d');
+						var ctxu = document.getElementById("unpreprocessChart").getContext('2d');
+						var preprocessChart = new Chart(ctxp, {
+							type: 'pie',
+							data: {
+								labels: ["NEUTRAL", "POSITIVE", "NEGATIVE"],
+								datasets: [{
+									backgroundColor: [
+										"grey",
+										"#2ecc71",
+										"#e74c3c"
+									],
+									data: [(neutral), (positive), (negative)]
+								}]
+							}
+						});
+						document.getElementById("positive").innerHTML = positive;
+						document.getElementById("negative").innerHTML = negative;
+						document.getElementById("neutral").innerHTML = neutral;
+						document.getElementById("total").innerHTML = positive+negative+neutral;
+						
+						var unpreprocessChart = new Chart(ctxu, {
+							type: 'pie',
+							data: {
+								labels: ["NEUTRAL", "POSITIVE", "NEGATIVE"],
+								datasets: [{
+									backgroundColor: [
+										"grey",
+										"#2ecc71",
+										"#e74c3c"
+									],
+									data: [(neutral_n), (positive_n), (negative_n)]
+								}]
+							}
+						});
+						document.getElementById("positive_n").innerHTML = positive_n;
+						document.getElementById("negative_n").innerHTML = negative_n;
+						document.getElementById("neutral_n").innerHTML = neutral_n;
+						document.getElementById("total_n").innerHTML = positive_n+negative_n+neutral_n;
+				});		
+				
+				// calculate accuration
+				$('#calculate').click(function() {
+					var a = 1;
+					for(var b=1;b<=count;b++) {
+							a = a+3;
+							b = a-3;
+							$("#nonstopword"+a).html(JSON.stringify(sentiment($("#txt"+b).val()), null, 2));
+							var nonstopword_trainset = jQuery.parseJSON(JSON.stringify(sentiment($("#txt"+b).val())));
+							var pos_train = 0;
+							var neg_train = 0;
+							for(var x = 0;x<=463;x++){
+								if(parseInt(nonstopword_trainset.score) > 0){
+									pos_train += nonstopword_trainset.score;
+								}else if(parseInt(nonstopword_trainset.score) < 0){
+									neg_train += nonstopword_trainset.score;
+									console.log(neg_train);
+								}
+							}
+					}
+				});
+				$('#contents').html(html);
+			};
+			reader.onerror = function(){ alert('Unable to read ' + file.fileName); };
+		}
+  </script>
+
+</html>
